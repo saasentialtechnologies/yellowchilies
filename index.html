@@ -15,8 +15,8 @@
     @media print {
       body * { visibility: hidden; }
       #receipt-modal, #receipt-modal *, #printable-receipt, #printable-receipt *, #kot-print-area, #kot-print-area * { visibility: visible; }
-      #receipt-modal { display: none !important; }
-      #kot-print-area { position: absolute; left: 0; top: 0; width: 100%; background: white !important; display: block !important; }
+      #receipt-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important; display: block !important; box-shadow: none !important; }
+      #kot-print-area { display: none !important; }
       .print-slip-box { page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; margin-bottom: 20px; }
       .no-print { display: none !important; }
     }
@@ -35,7 +35,8 @@
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 relative">
       <button onclick="closeReceiptModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl no-print">&times;</button>
       <div id="printable-receipt" class="bg-slate-50 border p-4 rounded-xl text-slate-900 font-mono text-xs mb-4 space-y-2">
-        <div class="text-center border-b pb-2">
+        <div class="text-center border-b pb-2 flex flex-col items-center">
+          <img src="https://i.postimg.cc/pXrjvqv5/yellowchillies.jpg" alt="Logo" class="w-12 h-12 rounded-full object-cover mb-1 border border-amber-500 shadow-sm">
           <h3 id="receipt-brand-name" class="font-black text-sm uppercase">YELLOW CHILLIES</h3>
           <p id="receipt-branch-name" class="text-[10px] text-slate-500">Shop#8, F/F Broadway Heights-3, Bahria Orchard</p>
           <p class="text-[9px] text-emerald-600 font-bold">Where Taste Meets Quality</p>
@@ -1041,7 +1042,7 @@
           <td class="p-2.5 font-bold">#${s.id}</td>
           <td class="p-2.5 text-emerald-700 font-bold">${s.table}</td>
           <td class="p-2.5">${s.serviceArea}</td>
-          <td class="p-2.5">${Array.isArray(s.items) ? s.items.name + ' (x' + i.qty + ')' : ''}</td>
+          <td class="p-2.5">${Array.isArray(s.items) ? s.items.map(i => i.name + ' (x' + i.qty + ')').join(', ') : ''}</td>
           <td class="p-2.5 font-black text-emerald-600">Rs. ${s.total}</td>
         </tr>
       `).join('');
@@ -1161,7 +1162,6 @@
       reader.readAsText(file);
     }
 
-    localStorage.removeItem('pakrms_completed_sales_GULBERG');
     renderMenu();
     renderIncomingQueue();
     renderKDS();
