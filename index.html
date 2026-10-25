@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Yellow Chillies Restaurant Software - Enterprise RMS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #receipt-modal, #receipt-modal *, #printable-receipt, #printable-receipt *, #kot-print-area, #kot-print-area * { visibility: visible; }
+      #receipt-modal { display: none !important; }
+      #kot-print-area { position: absolute; left: 0; top: 0; width: 100%; background: white !important; display: block !important; }
+      .print-slip-box { page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; margin-bottom: 20px; }
+      .no-print { display: none !important; }
+    }
+    .active-nav-btn { background-color: #0f172a !important; color: #ffffff !important; border-left: 4px solid #10b981 !important; }
+    .active-order-type { background-color: #059669 !important; color: #ffffff !important; border-color: #059669 !important; }
+    button, select, input { min-height: 40px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
+
+  <!-- CATEGORY-WISE KOT SLIP PRINT AREA -->
+  <div id="kot-print-area" class="hidden"></div>
+
+  <!-- RECEIPT MODAL -->
+  <div id="receipt-modal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 relative">
+      <button onclick="closeReceiptModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl no-print">&times;</button>
+      <div id="printable-receipt" class="bg-slate-50 border p-4 rounded-xl text-slate-900 font-mono text-xs mb-4 space-y-2">
+        <div class="text-center border-b pb-2">
+          <h3 id="receipt-brand-name" class="font-black text-sm uppercase">YELLOW CHILLIES</h3>
+          <p id="receipt-branch-name" class="text-[10px] text-slate-500">Shop#8, F/F Broadway Heights-3, Bahria Orchard</p>
+          <p class="text-[9px] text-emerald-600 font-bold">Where Taste Meets Quality</p>
+          <p id="receipt-order-id" class="text-[11px] font-bold mt-1">Invoice #: 68481</p>
+          <p id="receipt-table-no" class="text-[10px] text-amber-600 font-bold">Order Type: DINEIN</p>
+          <p id="receipt-service-area" class="text-[10px] text-indigo-600 font-bold">Service Area: First Floor</p>
+          <p id="receipt-waiter-name" class="text-[10px] text-emerald-600 font-bold">Cashier: Counter Cashier</p>
+          <p id="receipt-time" class="text-[10px] text-slate-400">Date: 10/25/2026</p>
+        </div>
+        <div id="receipt-items-list" class="space-y-1 border-b pb-2"></div>
+        <div class="space-y-1 border-b pb-2 text-[11px]">
+          <div class="flex justify-between"><span>Subtotal:</span><span id="receipt-subtotal">Rs. 0</span></div>
+          <div class="flex justify-between text-rose-600"><span>Discount:</span><span id="receipt-discount">Rs. 0</span></div>
+        </div>
+        <div class="flex justify-between font-black text-sm pb-2 border-b">
+          <span>TOTAL:</span>
+          <span id="receipt-total-amount">Rs. 0</span>
+        </div>
+        <div class="text-center text-[10px] text-slate-400 pt-1">
+          <p>Good Food Brighter Mood</p>
+          <p class="font-bold">Powered by SaaSential Technologies</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 no-print">
+        <button onclick="printCategoryWiseKOT()" class="bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-receipt"></i> Print Slips</button>
+        <button onclick="window.print()" class="bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-print"></i> Print Bill</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESTAURANT PROFILE EDIT MODAL -->
+  <div id="restaurant-edit-modal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 relative">
+      <button onclick="closeRestaurantEditModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl">&times;</button>
+      <h3 class="text-base font-bold text-slate-900 mb-3"><i class="fa-solid fa-store text-emerald-600 mr-2"></i> Edit Restaurant Details</h3>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Restaurant Name</label>
+          <input type="text" id="edit-rest-name" class="w-full bg-slate-50 border p-2.5 rounded-xl text-xs outline-none font-semibold">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Branch Name</label>
+          <input type="text" id="edit-branch-name" class="w-full bg-slate-50 border p-2.5 rounded-xl text-xs outline-none font-semibold">
+        </div>
+        <button onclick="saveRestaurantDetails()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs shadow">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT MENU MODAL -->
+  <div id="menu-edit-modal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-5 relative max-h-[90vh] flex flex-col justify-between">
+      <button onclick="closeMenuEditModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl">&times;</button>
+      <h3 class="text-base font-bold text-slate-900 mb-3"><i class="fa-solid fa-utensils text-emerald-600 mr-2"></i> Edit Menu Items & Stock</h3>
+      <div class="overflow-y-auto max-h-[60vh] space-y-2 pr-1" id="menu-edit-list-container"></div>
+      <button onclick="closeMenuEditModal(); renderMenu();" class="mt-3 w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs">Done & Close</button>
+    </div>
+  </div>
+
+  <!-- ADMIN PASSWORD MODAL FOR STOCK -->
+  <div id="admin-auth-modal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 relative text-center">
+      <button onclick="closeAdminAuthModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl">&times;</button>
+      <h3 class="text-base font-bold text-slate-900 mb-2"><i class="fa-solid fa-lock text-rose-600 mr-1"></i> Admin Authorization</h3>
+      <p class="text-xs text-slate-500 mb-3">Enter Admin Password to manage Stock</p>
+      <input type="password" id="admin-pass-input" placeholder="Password" class="w-full bg-slate-50 border p-2.5 rounded-xl text-xs outline-none mb-3 text-center">
+      <button onclick="verifyAdminPassword()" class="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs">Verify</button>
+    </div>
+  </div>
+
+  <!-- STOCK / INVENTORY MODAL -->
+  <div id="stock-crud-modal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-5 relative max-h-[90vh] flex flex-col justify-between">
+      <button onclick="closeStockModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl">&times;</button>
+      <div>
+        <h3 class="text-base font-bold text-slate-900 mb-3"><i class="fa-solid fa-boxes-stacked text-amber-500 mr-2"></i> Stock & Inventory Management</h3>
+        <div class="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl border">
+          <input type="text" id="stock-item-name" placeholder="Item Name" class="w-full bg-white border p-2.5 rounded-xl text-xs outline-none">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" id="stock-item-qty" placeholder="Quantity" class="w-full bg-white border p-2.5 rounded-xl text-xs outline-none">
+            <input type="text" id="stock-item-unit" placeholder="Unit (e.g. kg)" class="w-full bg-white border p-2.5 rounded-xl text-xs outline-none">
+          </div>
+          <button onclick="saveStockItem()" class="w-full bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs">Add / Update Stock</button>
+        </div>
+      </div>
+      <div class="overflow-y-auto max-h-52 border-t pt-2 space-y-2" id="stock-list-container"></div>
+    </div>
+  </div>
+
+  <!-- SERVICE AREAS CRUD MODAL -->
+  <div id="table-crud-modal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-5 relative">
+      <button onclick="closeTableCrudModal()" class="absolute top-3 right-3 text-slate-400 font-bold text-xl">&times;</button>
+      <h3 class="text-base font-bold text-slate-900 mb-3"><i class="fa-solid fa-map-location-dot text-indigo-600 mr-2"></i> Manage Service Areas / Floors</h3>
+      <div class="grid grid-cols-12 gap-2 mb-4">
+        <input type="text" id="new-spot-name" placeholder="Area Name" class="col-span-8 bg-slate-50 border p-2 text-xs rounded-xl outline-none">
+        <button onclick="addNewTableOrSpot()" class="col-span-4 bg-indigo-600 text-white text-xs font-bold py-2 rounded-xl">Add Area</button>
+      </div>
+      <div class="max-h-60 overflow-y-auto space-y-2" id="tables-list-container"></div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="notification-toast" class="hidden fixed top-3 right-3 z-50 bg-slate-900 text-white p-3 rounded-xl shadow-xl flex items-center space-x-3">
+    <div>
+      <h4 id="toast-title" class="font-bold text-xs text-emerald-400">Notification</h4>
+      <p id="toast-body" class="text-[11px] text-slate-300">Done</p>
+    </div>
+  </div>
+
+  <!-- MAIN APP LAYOUT WITH SIDEBAR -->
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-full lg:w-64 bg-slate-950 text-slate-300 flex flex-col justify-between p-4 shadow-xl shrink-0">
+      <div>
+        <div class="text-center border-b border-slate-800 pb-4 mb-4">
+          <div class="w-24 h-24 rounded-2xl mx-auto mb-2 overflow-hidden border-2 border-amber-500 shadow-md bg-slate-900 flex items-center justify-center">
+            <img src="https://i.postimg.cc/pXrjvqv5/yellowchillies.jpg" alt="Yellow Chillies Logo" class="w-full h-full object-cover">
+          </div>
+          <h1 class="text-sm font-black tracking-wide text-white" id="display-header-restaurant-name">YELLOW CHILLIES</h1>
+          <p class="text-[10px] text-amber-400 font-semibold" id="display-header-branch-name">Shop#8, F/F Broadway Heights-3, Bahria Orchard</p>
+          <p class="text-[9px] text-emerald-400 italic mt-0.5">Where Taste Meets Quality</p>
+        </div>
+
+        <div class="space-y-1">
+          <button id="nav-btn-pos" onclick="switchView('pos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 active-nav-btn">
+            <i class="fa-solid fa-cart-plus text-emerald-400"></i> New Order
+          </button>
+          <button id="nav-btn-kds" onclick="switchView('kds')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-slate-400 hover:bg-slate-900">
+            <i class="fa-solid fa-fire text-amber-500"></i> Kitchen KDS <span id="kds-badge" class="ml-auto bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+          </button>
+          <button id="nav-btn-credit" onclick="switchView('credit')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-slate-400 hover:bg-slate-900">
+            <i class="fa-solid fa-book-open text-indigo-400"></i> Udhaar Khata
+          </button>
+
+          <div class="pt-3 pb-1 px-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Reports Section</div>
+          
+          <button id="nav-btn-analytics" onclick="switchView('analytics', 'sales')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-slate-400 hover:bg-slate-900">
+            <i class="fa-solid fa-chart-line text-emerald-500"></i> Sales Report
+          </button>
+          <button id="nav-btn-profit" onclick="switchView('analytics', 'profit')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-slate-400 hover:bg-slate-900">
+            <i class="fa-solid fa-wallet text-amber-400"></i> Profit & Loss
+          </button>
+          <button id="nav-btn-itemwise" onclick="switchView('analytics', 'menu')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-slate-400 hover:bg-slate-900">
+            <i class="fa-solid fa-list-check text-indigo-400"></i> Item Wise Sales
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 space-y-2">
+        <button onclick="openMenuEditModal()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2.5 rounded-xl text-center shadow"><i class="fa-solid fa-utensils mr-1"></i> Edit Menu</button>
+        <button onclick="promptAdminAuth()" class="w-full bg-amber-600 text-slate-950 text-xs font-bold py-2.5 rounded-xl text-center shadow"><i class="fa-solid fa-lock mr-1"></i> Stock (Admin)</button>
+        <button onclick="openTableCrudModal()" class="w-full bg-indigo-600 text-white text-xs font-bold py-2.5 rounded-xl text-center shadow"><i class="fa-solid fa-map-location-dot mr-1"></i> Service Areas</button>
+        <button onclick="openRestaurantEditModal()" class="w-full bg-slate-800 text-slate-300 text-xs font-bold py-2 rounded-xl text-center"><i class="fa-solid fa-store mr-1"></i> Edit Info</button>
+        <div class="grid grid-cols-2 gap-1 pt-1">
+          <button onclick="exportSystemDataBackup()" class="bg-slate-900 text-slate-400 text-[10px] font-bold py-1.5 rounded-lg">Backup</button>
+          <label class="bg-slate-900 text-rose-400 text-[10px] font-bold py-1.5 rounded-lg text-center cursor-pointer">Restore <input type="file" onchange="importSystemDataRestore(event)" class="hidden" accept=".json"></label>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 flex flex-col justify-between">
+      <header class="bg-white border-b p-3 sm:p-4 flex justify-between items-center shadow-sm">
+        <h2 id="current-view-title" class="text-sm font-black text-slate-900 uppercase tracking-wide">POS Terminal & New Order</h2>
+      </header>
+
+      <main class="p-3 sm:p-5 flex-1">
+        <!-- POS VIEW -->
+        <div id="view-pos" class="view-panel grid grid-cols-12 gap-3">
+          <div class="col-span-12 lg:col-span-7 bg-white p-3 rounded-2xl border">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+              <h3 class="text-sm font-bold">Menu Catalog & Stock Quantities</h3>
+              <div class="flex items-center gap-2 w-full sm:w-auto justify-between">
+                <select id="category-filter-dropdown" onchange="filterCategory(this.value)" class="bg-emerald-50 border text-xs font-bold text-emerald-800 rounded-xl px-2.5 py-2 outline-none">
+                  <option value="ALL">All Categories</option>
+                  <option value="Burgers">Burgers</option>
+                  <option value="Wraps & Pratha Rolls">Wraps & Pratha Rolls</option>
+                  <option value="Shawarma & Platters">Shawarma & Platters</option>
+                  <option value="Sandwiches">Sandwiches</option>
+                  <option value="Fries and Add-Ons">Fries and Add-Ons</option>
+                  <option value="Fish">Fish</option>
+                  <option value="Grilled Beef Kababs">Grilled Beef Kababs</option>
+                  <option value="Drinks">Drinks</option>
+                </select>
+                <select id="table-select-dropdown" class="bg-indigo-50 border text-xs font-bold text-indigo-700 rounded-xl px-2.5 py-2 outline-none">
+                  <option value="First Floor">First Floor</option>
+                  <option value="Ground Floor">Ground Floor</option>
+                  <option value="Family Hall">Family Hall</option>
+                  <option value="Outdoor Lawn">Outdoor Lawn</option>
+                </select>
+                <button onclick="openQRCodeModal()" class="bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-bold"><i class="fa-solid fa-qrcode"></i> QR</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[520px] overflow-y-auto" id="menu-grid"></div>
+          </div>
+
+          <!-- CHECKOUT PANEL -->
+          <div class="col-span-12 lg:col-span-5 bg-white p-3 rounded-2xl border flex flex-col justify-between">
+            <div>
+              <div class="mb-3 border-b pb-2 flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="order-type-display-label">WALK-IN</span>
+                <div class="grid grid-cols-3 gap-1" id="order-type-buttons-container">
+                  <button onclick="selectOrderType('DINEIN')" id="btn-type-DINEIN" class="order-type-btn bg-slate-100 text-slate-700 border font-bold text-[10px] px-2 py-1.5 rounded-lg active-order-type">Dine</button>
+                  <button onclick="selectOrderType('TAKEAWAY')" id="btn-type-TAKEAWAY" class="order-type-btn bg-slate-100 text-slate-700 border font-bold text-[10px] px-2 py-1.5 rounded-lg">Takeaway</button>
+                  <button onclick="selectOrderType('DELIVERY')" id="btn-type-DELIVERY" class="order-type-btn bg-slate-100 text-slate-700 border font-bold text-[10px] px-2 py-1.5 rounded-lg">Delivery</button>
+                </div>
+              </div>
+
+              <h3 class="text-sm font-bold border-b pb-2 mb-2 flex justify-between items-center">
+                <span>Cart Items</span>
+                <span id="incoming-count-badge" class="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full">0 Active</span>
+              </h3>
+              
+              <div id="order-items-list" class="space-y-2 max-h-40 overflow-y-auto mb-3 border-b pb-3">
+                <p class="text-slate-400 text-xs text-center py-3">Cart is empty.</p>
+              </div>
+
+              <div class="bg-slate-100 p-2.5 rounded-xl border mb-3 space-y-1 text-xs font-semibold text-slate-700">
+                <div class="flex justify-between"><span>Total items in cart</span><span id="summary-total-items">0</span></div>
+                <div class="flex justify-between"><span>Sub Total</span><span id="summary-sub-total">0.00</span></div>
+                <div class="flex justify-between text-rose-600"><span>Discount</span><span id="summary-discount-val">0.00</span></div>
+                <div class="flex justify-between font-black text-sm text-slate-900 border-t pt-1"><span>Grand Total</span><span id="summary-grand-total">0.00 PKR</span></div>
+              </div>
+
+              <div id="incoming-orders-queue" class="space-y-2 max-h-24 overflow-y-auto"></div>
+            </div>
+
+            <div class="border-t pt-2 space-y-2.5">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Table Number / Area</label>
+                  <input type="text" id="waiter-name-input" placeholder="Table Number" class="w-full bg-slate-50 border p-2 rounded-xl text-xs outline-none font-semibold">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Discount (amount)</label>
+                  <input type="number" id="discount-input" placeholder="0" value="0" oninput="updateCartUI()" class="w-full bg-slate-50 border p-2 rounded-xl text-xs outline-none font-semibold">
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Comments</label>
+                <input type="text" id="order-comments-input" placeholder="Special Instructions / Comments" class="w-full bg-slate-50 border p-2 rounded-xl text-xs outline-none">
+              </div>
+              
+              <div class="grid grid-cols-4 gap-1.5 pt-1">
+                <button onclick="printCategoryWiseKOT()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-[11px] shadow flex items-center justify-center gap-1"><i class="fa-solid fa-receipt"></i> KOT</button>
+                <button onclick="previewCurrentBill()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-[11px] shadow flex items-center justify-center gap-1"><i class="fa-solid fa-print"></i> Bill</button>
+                <button onclick="checkoutOrder('payment')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-[11px] shadow flex items-center justify-center gap-1"><i class="fa-solid fa-wallet"></i> Pay</button>
+                <button onclick="checkoutOrder('cash')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-[11px] shadow flex items-center justify-center gap-1"><i class="fa-solid fa-check"></i> Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KDS VIEW -->
+        <div id="view-kds" class="view-panel hidden bg-slate-900 p-4 rounded-2xl text-white">
+          <h3 class="text-lg font-black text-emerald-400 mb-4">KITCHEN DISPLAY SCREEN (KDS)</h3>
+          <div id="kds-orders-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- UDHAAR VIEW -->
+        <div id="view-credit" class="view-panel hidden bg-white p-4 rounded-2xl border">
+          <h3 class="text-base font-bold mb-3">Udhaar Khata (Pending Dues)</h3>
+          <table class="w-full text-left text-xs">
+            <thead><tr class="bg-slate-100"><th class="p-2">Customer</th><th class="p-2">Order Type</th><th class="p-2">Amount</th><th class="p-2 text-right">Action</th></tr></thead>
+            <tbody id="credit-dues-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- ANALYTICS / REPORTS VIEW -->
+        <div id="view-analytics" class="view-panel hidden bg-white p-4 rounded-2xl border space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-center gap-2 border-b pb-3">
+            <h3 class="text-base font-bold text-slate-900" id="report-heading-title">Sales & Financial Reports</h3>
+            <div class="flex gap-2 items-center">
+              <select id="report-ordertype-filter" onchange="renderAnalyticsView()" class="bg-emerald-50 border text-xs font-bold text-emerald-800 rounded-xl px-3 py-2 outline-none">
+                <option value="ALL">All Order Types</option>
+                <option value="DINEIN">Dine-In Only</option>
+                <option value="TAKEAWAY">Takeaway Only</option>
+                <option value="DELIVERY">Delivery Only</option>
+              </select>
+              <select id="analytics-filter-mode" onchange="renderAnalyticsView()" class="bg-slate-50 border text-xs font-bold rounded-xl px-3 py-2 outline-none">
+                <option value="menu">Item Wise Sales Summary</option>
+                <option value="sales">Sales Overview</option>
+                <option value="profit">Profit & Loss</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="profit-loss-card" class="hidden bg-emerald-50 border border-emerald-200 p-4 rounded-2xl grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p class="text-[11px] text-slate-500 font-bold uppercase">Total Gross Revenue</p>
+              <h4 id="pl-total-revenue" class="text-lg font-black text-emerald-700">Rs. 0</h4>
+            </div>
+            <div>
+              <p class="text-[11px] text-slate-500 font-bold uppercase">Estimated COGS (Cost)</p>
+              <h4 id="pl-total-cost" class="text-lg font-black text-rose-600">Rs. 0</h4>
+            </div>
+            <div>
+              <p class="text-[11px] text-slate-500 font-bold uppercase">Net Profit</p>
+              <h4 id="pl-net-profit" class="text-lg font-black text-slate-900">Rs. 0</h4>
+            </div>
+          </div>
+
+          <div class="h-64"><canvas id="branchSalesChartCanvas"></canvas></div>
+
+          <div id="menu-sales-table-container" class="overflow-x-auto mt-4">
+            <h3 class="text-sm font-bold mb-2 text-emerald-700">Item Wise Sales Breakdown</h3>
+            <table class="w-full text-left text-xs border rounded-xl">
+              <thead>
+                <tr class="bg-slate-100 border-b">
+                  <th class="p-2.5">Item Name</th>
+                  <th class="p-2.5">Category</th>
+                  <th class="p-2.5">Total Qty Sold</th>
+                  <th class="p-2.5">Total Revenue Generated</th>
+                </tr>
+              </thead>
+              <tbody id="menu-sales-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="overflow-x-auto mt-6 border-t pt-4">
+            <h3 class="text-sm font-bold mb-2 text-slate-900">Detailed Order History</h3>
+            <table class="w-full text-left text-xs border rounded-xl">
+              <thead>
+                <tr class="bg-slate-100 border-b">
+                  <th class="p-2.5">Date & Time</th>
+                  <th class="p-2.5">Invoice #</th>
+                  <th class="p-2.5">Order Type</th>
+                  <th class="p-2.5">Service Area</th>
+                  <th class="p-2.5">Items Purchased</th>
+                  <th class="p-2.5">Total Amount</th>
+                </tr>
+              </thead>
+              <tbody id="detailed-order-history-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzQleKVZsgXrftcVkcIqvJasv5zOw0gJcA91RahhL0wNs4y4NXb6CTDD3vxnYXnB_BBow/exec';
+    const SHEET_NAME = 'Sheet2';
+
+    const defaultMenuCatalog = [
+      // BURGERS
+      { id: 101, name: 'Authentic Shami Burger', category: 'Burgers', price: 250, stock: 100, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80' },
+      { id: 102, name: 'Zinger Burger', category: 'Burgers', price: 380, stock: 100, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80' },
+      { id: 103, name: 'Zinger Burger Duo', category: 'Burgers', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80' },
+      { id: 104, name: 'Grilled Burger', category: 'Burgers', price: 550, stock: 100, image: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=500&auto=format&fit=crop&q=80' },
+      { id: 105, name: 'Chicken Burger', category: 'Burgers', price: 350, stock: 100, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80' },
+      { id: 106, name: 'Beef Burger', category: 'Burgers', price: 750, stock: 100, image: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500&auto=format&fit=crop&q=80' },
+      { id: 107, name: 'Beef Burger Duo', category: 'Burgers', price: 1250, stock: 100, image: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500&auto=format&fit=crop&q=80' },
+      { id: 108, name: 'Y.C Special Burger', category: 'Burgers', price: 700, stock: 100, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80' },
+
+      // WRAPS & PRATHA ROLLS
+      { id: 201, name: 'Chicken Wrap', category: 'Wraps & Pratha Rolls', price: 550, stock: 100, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=500&auto=format&fit=crop&q=80' },
+      { id: 202, name: 'Chicken Tikka Wrap', category: 'Wraps & Pratha Rolls', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=500&auto=format&fit=crop&q=80' },
+      { id: 203, name: 'Zinger Wrap', category: 'Wraps & Pratha Rolls', price: 600, stock: 100, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=500&auto=format&fit=crop&q=80' },
+      { id: 204, name: 'Y.C Special Wrap', category: 'Wraps & Pratha Rolls', price: 850, stock: 100, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=500&auto=format&fit=crop&q=80' },
+      { id: 205, name: 'Chicken Pratha Roll', category: 'Wraps & Pratha Rolls', price: 350, stock: 100, image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&auto=format&fit=crop&q=80' },
+      { id: 206, name: 'Zinger Pratha Roll', category: 'Wraps & Pratha Rolls', price: 400, stock: 100, image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&auto=format&fit=crop&q=80' },
+      { id: 207, name: 'Tikka Pratha Roll', category: 'Wraps & Pratha Rolls', price: 450, stock: 100, image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&auto=format&fit=crop&q=80' },
+
+      // SHAWARMA & PLATTERS
+      { id: 301, name: 'Chicken Shawarma', category: 'Shawarma & Platters', price: 300, stock: 100, image: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500&auto=format&fit=crop&q=80' },
+      { id: 302, name: 'Zingere Shawarma', category: 'Shawarma & Platters', price: 350, stock: 100, image: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500&auto=format&fit=crop&q=80' },
+      { id: 303, name: 'Chicken Tikka Shawarma', category: 'Shawarma & Platters', price: 400, stock: 100, image: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500&auto=format&fit=crop&q=80' },
+      { id: 304, name: 'Chicken Platter', category: 'Shawarma & Platters', price: 600, stock: 100, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&auto=format&fit=crop&q=80' },
+      { id: 305, name: 'Zinger Platter', category: 'Shawarma & Platters', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&auto=format&fit=crop&q=80' },
+      { id: 306, name: 'B.B.Q Platter', category: 'Shawarma & Platters', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&auto=format&fit=crop&q=80' },
+      { id: 307, name: 'Mix Platter', category: 'Shawarma & Platters', price: 750, stock: 100, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&auto=format&fit=crop&q=80' },
+
+      // SANDWICHES
+      { id: 401, name: 'Chicken Sandwich', category: 'Sandwiches', price: 350, stock: 100, image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=80' },
+      { id: 402, name: 'Club Sandwich', category: 'Sandwiches', price: 420, stock: 100, image: 'https://images.unsplash.com/photo-1567234669003-dce7a7a88821?w=500&auto=format&fit=crop&q=80' },
+      { id: 403, name: 'Grilled Sandwich', category: 'Sandwiches', price: 480, stock: 100, image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=80' },
+      { id: 404, name: 'B.B.Q Sandwich', category: 'Sandwiches', price: 600, stock: 100, image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=80' },
+      { id: 405, name: 'Y.C Special Sandwich', category: 'Sandwiches', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1567234669003-dce7a7a88821?w=500&auto=format&fit=crop&q=80' },
+      { id: 406, name: 'Steak Sandwich', category: 'Sandwiches', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=80' },
+      { id: 407, name: 'Zinger Sandwich', category: 'Sandwiches', price: 480, stock: 100, image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=80' },
+
+      // FRIES AND ADD-ONS
+      { id: 501, name: 'Simple Fries', category: 'Fries and Add-Ons', price: 250, stock: 100, image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&auto=format&fit=crop&q=80' },
+      { id: 502, name: 'Loaded Fries', category: 'Fries and Add-Ons', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500&auto=format&fit=crop&q=80' },
+      { id: 503, name: 'Mayo Fries', category: 'Fries and Add-Ons', price: 350, stock: 100, image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&auto=format&fit=crop&q=80' },
+      { id: 504, name: 'Nuggets (6Pcs)', category: 'Fries and Add-Ons', price: 350, stock: 100, image: 'https://images.unsplash.com/photo-1562967914-608f82629710?w=500&auto=format&fit=crop&q=80' },
+      { id: 505, name: 'Wings (6 Pcs)', category: 'Fries and Add-Ons', price: 500, stock: 100, image: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=500&auto=format&fit=crop&q=80' },
+      { id: 506, name: 'Cheese Slice', category: 'Fries and Add-Ons', price: 100, stock: 100, image: 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=500&auto=format&fit=crop&q=80' },
+      { id: 507, name: 'Dip Sauce', category: 'Fries and Add-Ons', price: 100, stock: 100, image: 'https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=500&auto=format&fit=crop&q=80' },
+
+      // FISH
+      { id: 601, name: 'Fish Burger', category: 'Fish', price: 700, stock: 100, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=500&auto=format&fit=crop&q=80' },
+      { id: 602, name: 'Fish Sandwich', category: 'Fish', price: 800, stock: 100, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=500&auto=format&fit=crop&q=80' },
+      { id: 603, name: 'Fish Shawarma', category: 'Fish', price: 450, stock: 100, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=500&auto=format&fit=crop&q=80' },
+      { id: 604, name: 'Fish Platter', category: 'Fish', price: 750, stock: 100, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=500&auto=format&fit=crop&q=80' },
+      { id: 605, name: 'Fish & Chips', category: 'Fish', price: 650, stock: 100, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=500&auto=format&fit=crop&q=80' },
+
+      // GRILLED BEEF KABABS
+      { id: 701, name: 'Grilled Chapli Kabab', category: 'Grilled Beef Kababs', price: 400, stock: 100, image: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=500&auto=format&fit=crop&q=80' },
+      { id: 702, name: 'Special Grilled Chapli Kabab', category: 'Grilled Beef Kababs', price: 800, stock: 100, image: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=500&auto=format&fit=crop&q=80' },
+
+      // DRINKS
+      { id: 801, name: 'Cold Drink', category: 'Drinks', price: 100, stock: 100, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=80' },
+      { id: 802, name: 'Mineral Water', category: 'Drinks', price: 100, stock: 100, image: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=500&auto=format&fit=crop&q=80' }
+    ];
+
+    let menuCatalog = JSON.parse(localStorage.getItem('yellowchillies_menu_catalog')) || defaultMenuCatalog;
+    let restaurantProfile = JSON.parse(localStorage.getItem('yellowchillies_restaurant_profile')) || {
+      name: "YELLOW CHILLIES",
+      branch: "Shop#8, F/F Broadway Heights-3, Bahria Orchard"
+    };
+    let serviceAreas = JSON.parse(localStorage.getItem('pakrms_service_areas_db')) || [
+      { id: 1, name: 'First Floor' }, { id: 2, name: 'Ground Floor' }, { id: 3, name: 'Family Hall' }, { id: 4, name: 'Outdoor Lawn' }
+    ];
+    let stockCatalog = JSON.parse(localStorage.getItem('pakrms_stock_db')) || [
+      { id: 1, name: 'Chicken Stock', qty: 50, unit: 'kg' }, { id: 2, name: 'Beef Stock', qty: 30, unit: 'kg' }
+    ];
+
+    let currentCart = [];
+    let currentSelectedOrderType = 'DINEIN';
+    let selectedCategoryFilter = 'ALL';
+    let salesChartInstance = null;
+
+    function showToast(title, body) {
+      document.getElementById('toast-title').innerText = title;
+      document.getElementById('toast-body').innerText = body;
+      const t = document.getElementById('notification-toast');
+      t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    function selectOrderType(typeName) {
+      currentSelectedOrderType = typeName;
+      document.querySelectorAll('.order-type-btn').forEach(btn => btn.classList.remove('active-order-type'));
+      const activeBtn = document.getElementById('btn-type-' + typeName);
+      if(activeBtn) activeBtn.classList.add('active-order-type');
+      document.getElementById('order-type-display-label').innerText = typeName;
+    }
+
+    function filterCategory(cat) {
+      selectedCategoryFilter = cat;
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const itemsToRender = selectedCategoryFilter === 'ALL' 
+        ? menuCatalog 
+        : menuCatalog.filter(m => m.category === selectedCategoryFilter);
+
+      document.getElementById('menu-grid').innerHTML = itemsToRender.map(m => `
+        <div class="bg-slate-50 border p-2 rounded-xl flex flex-col justify-between cursor-pointer hover:border-emerald-500 transition-colors" onclick="addToCart(${m.id})">
+          <img src="${m.image}" class="h-20 rounded-lg object-cover mb-1">
+          <p class="font-bold text-xs truncate">${m.name}</p>
+          <span class="text-[10px] text-slate-500 font-bold truncate">${m.category}</span>
+          <div class="flex justify-between items-center mt-1">
+            <span class="text-emerald-600 font-black text-xs">Rs. ${m.price}</span>
+            <span class="text-[10px] text-slate-500 font-bold">Left: ${m.stock ?? 100}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addToCart(id) {
+      const item = menuCatalog.find(m => m.id === id);
+      if(!item) return;
+      const exist = currentCart.find(c => c.id === id);
+      if(exist) { exist.qty++; } else { currentCart.push({ ...item, qty: 1 }); }
+      updateCartUI();
+    }
+
+    function changeCartQty(id, delta) {
+      const exist = currentCart.find(c => c.id === id);
+      if(exist) {
+        exist.qty += delta;
+        if(exist.qty <= 0) { currentCart = currentCart.filter(c => c.id !== id); }
+      }
+      updateCartUI();
+    }
+
+    function removeFromCartCompletely(id) {
+      currentCart = currentCart.filter(c => c.id !== id);
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const list = document.getElementById('order-items-list');
+      let totalQtyCount = 0;
+      
+      if(currentCart.length === 0) { 
+        list.innerHTML = `<p class="text-slate-400 text-xs text-center py-2">Cart is empty.</p>`; 
+      } else {
+        list.innerHTML = currentCart.map(c => {
+          totalQtyCount += Number(c.qty);
+          return `
+            <div class="flex justify-between items-center text-xs border-b pb-2">
+              <div class="truncate max-w-[130px]">
+                <span class="font-bold block">${c.name}</span>
+                <span class="text-[10px] text-emerald-600 font-bold">Rs. ${c.price}</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <button onclick="removeFromCartCompletely(${c.id})" class="text-rose-500 hover:text-rose-700 px-1 py-1 font-bold"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                <div class="flex items-center space-x-1 bg-slate-100 rounded-lg p-0.5 border">
+                  <button onclick="changeCartQty(${c.id}, -1)" class="w-5 h-5 bg-white rounded shadow text-slate-700 font-bold flex items-center justify-center">-</button>
+                  <span class="w-5 text-center font-bold">${c.qty}</span>
+                  <button onclick="changeCartQty(${c.id}, 1)" class="w-5 h-5 bg-white rounded shadow text-slate-700 font-bold flex items-center justify-center">+</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const subtotal = currentCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+      const total = Math.max(0, subtotal - discount);
+
+      document.getElementById('summary-total-items').innerText = totalQtyCount;
+      document.getElementById('summary-sub-total').innerText = subtotal.toFixed(2);
+      document.getElementById('summary-discount-val').innerText = discount.toFixed(2);
+      document.getElementById('summary-grand-total').innerText = `${total.toFixed(2)} PKR`;
+    }
+
+    function previewCurrentBill() {
+      if(currentCart.length === 0) return alert("Cart is empty!");
+      const subtotal = currentCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+      const total = Math.max(0, subtotal - discount);
+      const serviceArea = document.getElementById('table-select-dropdown').value || 'First Floor';
+      const tableNo = document.getElementById('waiter-name-input').value.trim() || 'Table 1';
+      const now = new Date();
+
+      document.getElementById('receipt-brand-name').innerText = restaurantProfile.name;
+      document.getElementById('receipt-branch-name').innerText = restaurantProfile.branch;
+      document.getElementById('receipt-order-id').innerText = `Invoice #: PREVIEW-${Math.floor(Math.random() * 89999 + 10000)}`;
+      document.getElementById('receipt-table-no').innerText = `Order Type: ${currentSelectedOrderType}`;
+      document.getElementById('receipt-service-area').innerText = `Service Area: ${serviceArea} - ${tableNo}`;
+      document.getElementById('receipt-waiter-name').innerText = `Cashier: Counter Cashier`;
+      document.getElementById('receipt-time').innerText = `Date: ${now.toLocaleDateString()}, ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+      document.getElementById('receipt-items-list').innerHTML = currentCart.map(i => `
+        <div class="flex justify-between">
+          <span>${i.name} (x${i.qty})</span>
+          <span>Rs. ${i.price * i.qty}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('receipt-subtotal').innerText = `Rs. ${subtotal.toFixed(2)}`;
+      document.getElementById('receipt-discount').innerText = `Rs. ${discount.toFixed(2)}`;
+      document.getElementById('receipt-total-amount').innerText = `Rs. ${total.toFixed(2)}`;
+
+      document.getElementById('receipt-modal').classList.remove('hidden');
+    }
+
+    function closeReceiptModal() {
+      document.getElementById('receipt-modal').classList.add('hidden');
+    }
+
+    async function pushOrderToSheet(order) {
+      try {
+        await fetch(SHEET_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'addOrder', sheetName: SHEET_NAME, order: order })
+        });
+      } catch(e) {}
+    }
+
+    async function markOrderCompleteInSheet(orderId, actionType = 'completeOrder') {
+      try {
+        await fetch(SHEET_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: actionType, sheetName: SHEET_NAME, orderId: orderId })
+        });
+      } catch(e) {}
+    }
+
+    async function fetchOrdersFromSheet() {
+      try {
+        const res = await fetch(`${SHEET_WEB_APP_URL}?sheetName=${encodeURIComponent(SHEET_NAME)}`);
+        if(res.ok) {
+          const orders = await res.json();
+          if(Array.isArray(orders)) {
+            let completedIds = JSON.parse(localStorage.getItem('pakrms_completed_ids') || '[]');
+            let cancelledIds = JSON.parse(localStorage.getItem('pakrms_cancelled_ids') || '[]');
+            
+            const active = orders.filter(o => o.status === 'Active' && !completedIds.includes(Number(o.id)) && !cancelledIds.includes(Number(o.id)));
+            localStorage.setItem('pakrms_active_waiter_orders', JSON.stringify(active));
+            localStorage.setItem('pakrms_kds_GULBERG', JSON.stringify(active));
+            
+            const creditOrders = orders.filter(o => o.status === 'Credit' && !cancelledIds.includes(Number(o.id))).map(o => ({
+              id: Number(o.id),
+              customerName: o.waiterName || 'Guest',
+              table: o.table || 'DINEIN',
+              serviceArea: o.serviceArea || 'First Floor',
+              totalAmount: Number(o.totalAmount),
+              items: o.items,
+              discount: o.discount || 0,
+              comments: o.comments || '',
+              timestamp: o.timestamp || new Date().toISOString()
+            }));
+            localStorage.setItem('pakrms_credit_dues', JSON.stringify(creditOrders));
+
+            const completedFromSheet = orders.filter(o => o.status === 'Completed').map(o => {
+              let existingTime = o.fullFormattedDate;
+              if (!existingTime && o.timestamp) {
+                let d = new Date(o.timestamp);
+                existingTime = d.toLocaleDateString() + `, ` + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              }
+              return {
+                id: Number(o.id),
+                total: Number(o.totalAmount),
+                table: o.table || 'DINEIN',
+                serviceArea: o.serviceArea || 'First Floor',
+                waiterName: o.waiterName || 'Counter',
+                time: o.time || '10:45 AM',
+                fullFormattedDate: existingTime || (o.time ? o.time : new Date().toLocaleString()),
+                timestamp: o.timestamp || new Date().toISOString(),
+                items: o.items || []
+              };
+            });
+            if(completedFromSheet.length > 0) {
+              let localSales = JSON.parse(localStorage.getItem('pakrms_completed_sales_GULBERG')) || [];
+              let mergedMap = new Map();
+              localSales.forEach(s => mergedMap.set(s.id, s));
+              completedFromSheet.forEach(s => {
+                if(!mergedMap.has(s.id) || !mergedMap.get(s.id).fullFormattedDate) {
+                  mergedMap.set(s.id, s);
+                }
+              });
+              localStorage.setItem('pakrms_completed_sales_GULBERG', JSON.stringify(Array.from(mergedMap.values())));
+            }
+            renderIncomingQueue();
+            renderKDS();
+          }
+        }
+      } catch(e) {}
+    }
+
+    setInterval(fetchOrdersFromSheet, 4000);
+
+    function printCategoryWiseKOT() {
+      if(currentCart.length === 0) return alert("Cart is empty!");
+      
+      const tableNo = document.getElementById('waiter-name-input').value.trim() || 'Table 1';
+      const serviceArea = document.getElementById('table-select-dropdown').value || 'First Floor';
+      const comments = document.getElementById('order-comments-input').value.trim();
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString() + `, ` + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      let categoryGroups = {};
+      currentCart.forEach(item => {
+        let cat = item.category || 'General';
+        if(!categoryGroups[cat]) categoryGroups[cat] = [];
+        categoryGroups[cat].push(item);
+      });
+
+      let categories = Object.keys(categoryGroups);
+      const kotArea = document.getElementById('kot-print-area');
+      
+      kotArea.innerHTML = categories.map((cat, index) => {
+        let itemsHtml = categoryGroups[cat].map(i => `
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding: 4px 0; border-bottom: 1px dashed #ccc;">
+            <span>${i.name}</span>
+            <span>x${i.qty}</span>
+          </div>
+        `).join('');
+
+        return `
+          <div class="print-slip-box" style="font-family: monospace; font-size: 13px; padding: 15px; background: #fff; width: 300px; margin: 0 auto;">
+            <div style="text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; background: #000; color: #fff; padding: 5px;">*** ${(cat).toUpperCase()} COUNTER ***</div>
+            <br/>
+            <div style="font-weight: bold;">Restaurant: ${restaurantProfile.name}</div>
+            <div>Branch: ${restaurantProfile.branch}</div>
+            <div>Date: ${formattedDate}</div>
+            <hr style="border: none; border-top: 1px solid #000; margin: 5px 0;"/>
+            <div style="font-size: 15px; font-weight: bold;">Order Type: ${currentSelectedOrderType}</div>
+            <div style="font-size: 13px; font-weight: bold; color: #4338ca;">Table / Area: ${tableNo} (${serviceArea})</div>
+            <hr style="border: none; border-top: 1px solid #000; margin: 5px 0;"/>
+            ${comments ? `<div style="margin-top: 5px; font-style: italic; font-weight: bold;">Note: ${comments}</div>` : ''}
+            <br/>
+            <div style="border: 2px solid #000; padding: 10px; background: #f9f9f9;">
+              <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; text-decoration: underline;">ITEMS LIST:</div>
+              ${itemsHtml}
+            </div>
+            <div style="text-align: center; margin-top: 15px; font-size: 10px; font-weight: bold;">--- Send to ${cat} Kitchen ---</div>
+          </div>
+        `;
+      }).join('');
+
+      window.print();
+    }
+
+    function checkoutOrder(type) {
+      if(currentCart.length === 0) return alert("Cart is empty!");
+      const subtotal = currentCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+      const total = Math.max(0, subtotal - discount);
+      const comments = document.getElementById('order-comments-input').value.trim();
+      const serviceArea = document.getElementById('table-select-dropdown').value || 'First Floor';
+      const tableNo = document.getElementById('waiter-name-input').value.trim() || 'Table 1';
+      
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString() + `, ` + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      currentCart.forEach(cartItem => {
+        const found = menuCatalog.find(m => m.id === cartItem.id);
+        if(found) {
+          found.stock = Math.max(0, (found.stock ?? 100) - cartItem.qty);
+        }
+      });
+      localStorage.setItem('yellowchillies_menu_catalog', JSON.stringify(menuCatalog));
+      renderMenu();
+
+      const order = {
+        id: Math.floor(Math.random() * 89999 + 10000),
+        table: currentSelectedOrderType,
+        serviceArea: `${serviceArea} - ${tableNo}`,
+        waiterName: 'Counter Cashier',
+        items: [...currentCart],
+        totalAmount: total,
+        discount: discount,
+        comments: comments,
+        status: type === 'payment' ? 'Completed' : 'Active',
+        fullFormattedDate: formattedDate,
+        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: now.toISOString()
+      };
+
+      if(type === 'payment') {
+        let sales = JSON.parse(localStorage.getItem('pakrms_completed_sales_GULBERG')) || [];
+        sales.push({ id: order.id, total: order.totalAmount, table: order.table, serviceArea: order.serviceArea, waiterName: order.waiterName, time: order.time, fullFormattedDate: order.fullFormattedDate, timestamp: order.timestamp, items: order.items });
+        localStorage.setItem('pakrms_completed_sales_GULBERG', JSON.stringify(sales));
+        showToast("Payment Success", `Order #${order.id} paid & saved.`);
+      } else {
+        let active = JSON.parse(localStorage.getItem('pakrms_active_waiter_orders')) || [];
+        active.push(order);
+        localStorage.setItem('pakrms_active_waiter_orders', JSON.stringify(active));
+        localStorage.setItem('pakrms_kds_GULBERG', JSON.stringify(active));
+        showToast("Saved", `Order #${order.id} pushed successfully.`);
+      }
+
+      pushOrderToSheet(order);
+
+      currentCart = [];
+      document.getElementById('discount-input').value = '0';
+      document.getElementById('order-comments-input').value = '';
+      document.getElementById('waiter-name-input').value = '';
+      updateCartUI();
+      renderIncomingQueue();
+      renderKDS();
+    }
+
+    function renderIncomingQueue() {
+      let active = JSON.parse(localStorage.getItem('pakrms_active_waiter_orders')) || [];
+      let cancelledIds = JSON.parse(localStorage.getItem('pakrms_cancelled_ids') || '[]');
+      active = active.filter(o => !cancelledIds.includes(Number(o.id)));
+
+      document.getElementById('incoming-count-badge').innerText = `${active.length} Active`;
+      document.getElementById('incoming-orders-queue').innerHTML = active.map(o => `
+        <div class="bg-amber-50 border p-2 rounded-xl text-xs flex justify-between items-center">
+          <div>
+            <div class="font-bold">#${o.id} - <span class="text-emerald-700">[${o.table}]</span> [${o.serviceArea}] (Rs. ${o.totalAmount})</div>
+            <div class="text-[10px] text-slate-500">${Array.isArray(o.items) ? o.items.map(i=>i.name + ' (x' + i.qty + ')').join(', ') : o.items}</div>
+          </div>
+          <button onclick="cancelOrder(${o.id})" class="bg-rose-600 text-white text-[10px] px-2 py-1 rounded font-bold">Cancel</button>
+        </div>
+      `).join('');
+    }
+
+    function cancelOrder(id) {
+      if(!confirm(`Cancel Order #${id}?`)) return;
+      
+      let cancelledIds = JSON.parse(localStorage.getItem('pakrms_cancelled_ids') || '[]');
+      if(!cancelledIds.includes(Number(id))) {
+        cancelledIds.push(Number(id));
+        localStorage.setItem('pakrms_cancelled_ids', JSON.stringify(cancelledIds));
+      }
+
+      let active = JSON.parse(localStorage.getItem('pakrms_active_waiter_orders')) || [];
+      active = active.filter(o => Number(o.id) !== Number(id));
+      localStorage.setItem('pakrms_active_waiter_orders', JSON.stringify(active));
+      localStorage.setItem('pakrms_kds_GULBERG', JSON.stringify(active));
+
+      markOrderCompleteInSheet(id, 'cancelOrder');
+      renderIncomingQueue();
+      renderKDS();
+      showToast("Cancelled", `Order #${id} has been cancelled.`);
+    }
+
+    function renderKDS() {
+      let activeOrders = JSON.parse(localStorage.getItem('pakrms_active_waiter_orders')) || [];
+      let kdsOrders = JSON.parse(localStorage.getItem('pakrms_kds_GULBERG')) || [];
+      let combinedMap = new Map();
+      activeOrders.forEach(o => combinedMap.set(Number(o.id), o));
+      kdsOrders.forEach(o => combinedMap.set(Number(o.id), o));
+      
+      let active = Array.from(combinedMap.values());
+      let cancelledIds = JSON.parse(localStorage.getItem('pakrms_cancelled_ids') || '[]');
+      active = active.filter(o => !cancelledIds.includes(Number(o.id)));
+
+      document.getElementById('kds-badge').innerText = active.length;
+      const container = document.getElementById('kds-orders-container');
+      
+      if(active.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-6">No active kitchen orders.</div>`;
+        return;
+      }
+      
+      container.innerHTML = active.map(o => {
+        let itemsListHtml = '';
+        if (Array.isArray(o.items)) {
+          itemsListHtml = o.items.map(i => `<div class="flex justify-between border-b border-slate-700/50 pb-1"><span>${i.name}</span><span class="font-bold text-amber-400">x${i.qty}</span></div>`).join('');
+        } else {
+          itemsListHtml = `<div>${o.items || 'General Items'}</div>`;
+        }
+
+        return `
+          <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-white shadow-lg flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between font-bold border-b border-slate-700 pb-2 mb-2">
+                <span class="text-emerald-400">Invoice #${o.id}</span>
+                <span class="bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded text-[10px] uppercase font-black">${o.table || 'DINEIN'}</span>
+              </div>
+              <div class="text-[11px] text-indigo-300 font-semibold mb-2"><i class="fa-solid fa-map-pin mr-1"></i> ${o.serviceArea || 'First Floor'}</div>
+              <div class="text-xs space-y-1.5 mb-4 bg-slate-900/50 p-2.5 rounded-lg border border-slate-700">
+                ${itemsListHtml}
+              </div>
+              ${o.comments ? `<div class="text-[11px] text-amber-300 italic mb-3 bg-amber-950/40 p-2 rounded border border-amber-900/50">Note: ${o.comments}</div>` : ''}
+            </div>
+            <button onclick="completeOrder(${o.id})" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black py-2.5 rounded-xl text-xs shadow transition-colors"><i class="fa-solid fa-check-double mr-1"></i> MARK SERVED</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function completeOrder(id) {
+      let active = JSON.parse(localStorage.getItem('pakrms_active_waiter_orders')) || [];
+      const ord = active.find(o => Number(o.id) === Number(id));
+      
+      active = active.filter(o => Number(o.id) !== Number(id));
+      localStorage.setItem('pakrms_active_waiter_orders', JSON.stringify(active));
+      localStorage.setItem('pakrms_kds_GULBERG', JSON.stringify(active));
+
+      if(ord) {
+        let sales = JSON.parse(localStorage.getItem('pakrms_completed_sales_GULBERG')) || [];
+        sales.push({ 
+          id: ord.id, 
+          total: ord.totalAmount, 
+          table: ord.table, 
+          serviceArea: ord.serviceArea, 
+          waiterName: ord.waiterName, 
+          time: ord.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+          fullFormattedDate: ord.fullFormattedDate || new Date().toLocaleString(), 
+          timestamp: ord.timestamp || new Date().toISOString(), 
+          items: ord.items 
+        });
+        localStorage.setItem('pakrms_completed_sales_GULBERG', JSON.stringify(sales));
+        markOrderCompleteInSheet(id, 'completeOrder');
+      }
+      renderKDS();
+      renderIncomingQueue();
+      showToast("Served", `Order #${id} marked as served & moved to sales.`);
+    }
+
+    function switchView(viewId, subMode = '') {
+      document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('aside button').forEach(btn => btn.classList.remove('active-nav-btn'));
+
+      if(viewId === 'analytics') {
+        document.getElementById('view-analytics').classList.remove('hidden');
+        if(subMode === 'sales') {
+          document.getElementById('analytics-filter-mode').value = 'sales';
+          document.getElementById('current-view-title').innerText = "Sales Report & Overview";
+          document.getElementById('nav-btn-analytics').classList.add('active-nav-btn');
+        } else if(subMode === 'profit') {
+          document.getElementById('analytics-filter-mode').value = 'profit';
+          document.getElementById('current-view-title').innerText = "Profit & Loss Analysis";
+          document.getElementById('nav-btn-profit').classList.add('active-nav-btn');
+        } else if(subMode === 'menu') {
+          document.getElementById('analytics-filter-mode').value = 'menu';
+          document.getElementById('current-view-title').innerText = "Item Wise Sales Breakdown";
+          document.getElementById('nav-btn-itemwise').classList.add('active-nav-btn');
+        }
+        renderAnalyticsView();
+      } else {
+        document.getElementById('view-' + viewId).classList.remove('hidden');
+        if(document.getElementById('nav-btn-' + viewId)) {
+          document.getElementById('nav-btn-' + viewId).classList.add('active-nav-btn');
+        }
+        if(viewId === 'pos') document.getElementById('current-view-title').innerText = "POS Terminal & New Order";
+        if(viewId === 'kds') { document.getElementById('current-view-title').innerText = "Kitchen Display Screen (KDS)"; renderKDS(); }
+        if(viewId === 'credit') { document.getElementById('current-view-title').innerText = "Udhaar Khata (Pending Dues)"; renderCreditDues(); }
+      }
+    }
+
+    function renderAnalyticsView() {
+      let sales = JSON.parse(localStorage.getItem('pakrms_completed_sales_GULBERG')) || [];
+      let mode = document.getElementById('analytics-filter-mode').value;
+      let orderTypeFilter = document.getElementById('report-ordertype-filter').value;
+      const menuTableContainer = document.getElementById('menu-sales-table-container');
+      const plCard = document.getElementById('profit-loss-card');
+
+      let filteredSales = sales;
+      if(orderTypeFilter !== 'ALL') {
+        filteredSales = sales.filter(s => (s.table || 'DINEIN').toUpperCase() === orderTypeFilter.toUpperCase());
+      }
+      
+      let aggregatedData = {};
+      let menuWiseData = {};
+      let labels = [];
+      let dataValues = [];
+
+      plCard.classList.add('hidden');
+
+      if(mode === 'menu') {
+        menuTableContainer.classList.remove('hidden');
+        filteredSales.forEach(s => {
+          if(Array.isArray(s.items)) {
+            s.items.forEach(i => {
+              if(!menuWiseData[i.name]) {
+                menuWiseData[i.name] = { category: i.category || 'General', qty: 0, revenue: 0 };
+              }
+              menuWiseData[i.name].qty += Number(i.qty || 0);
+              menuWiseData[i.name].revenue += Number(i.price || 0) * Number(i.qty || 0);
+            });
+          }
+        });
+
+        let menuNames = Object.keys(menuWiseData);
+        let menuQtys = menuNames.map(name => menuWiseData[name].qty);
+
+        document.getElementById('menu-sales-tbody').innerHTML = menuNames.length > 0 ? menuNames.map(name => `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-2.5 font-bold text-slate-900">${name}</td>
+            <td class="p-2.5 text-slate-600">${menuWiseData[name].category}</td>
+            <td class="p-2.5 font-bold text-emerald-700">${menuWiseData[name].qty}</td>
+            <td class="p-2.5 font-black text-emerald-600">Rs. ${menuWiseData[name].revenue}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="4" class="text-center py-4 text-slate-400">No items sold.</td></tr>`;
+
+        labels = menuNames;
+        dataValues = menuQtys;
+      } else if(mode === 'profit') {
+        menuTableContainer.classList.add('hidden');
+        plCard.classList.remove('hidden');
+
+        let totalRev = filteredSales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+        let estimatedCost = totalRev * 0.65;
+        let netProfit = totalRev - estimatedCost;
+
+        document.getElementById('pl-total-revenue').innerText = `Rs. ${totalRev}`;
+        document.getElementById('pl-total-cost').innerText = `Rs. ${Math.round(estimatedCost)}`;
+        document.getElementById('pl-net-profit').innerText = `Rs. ${Math.round(netProfit)}`;
+
+        filteredSales.forEach(s => {
+          let key = s.fullFormattedDate || 'Today';
+          if(!aggregatedData[key]) aggregatedData[key] = 0;
+          aggregatedData[key] += Number(s.total || 0) * 0.35;
+        });
+
+        labels = Object.keys(aggregatedData);
+        dataValues = Object.values(aggregatedData);
+      } else {
+        menuTableContainer.classList.add('hidden');
+        filteredSales.forEach(s => {
+          let key = s.fullFormattedDate || 'Today';
+          if(!aggregatedData[key]) aggregatedData[key] = 0;
+          aggregatedData[key] += Number(s.total || 0);
+        });
+
+        labels = Object.keys(aggregatedData);
+        dataValues = Object.values(aggregatedData);
+      }
+
+      const ctx = document.getElementById('branchSalesChartCanvas').getContext('2d');
+      if(salesChartInstance) salesChartInstance.destroy();
+      
+      salesChartInstance = new Chart(ctx, {
+        type: mode === 'menu' || mode === 'profit' ? 'bar' : 'line',
+        data: {
+          labels: labels.length > 0 ? labels : ['No Data Yet'],
+          datasets: [{
+            label: mode === 'menu' ? 'Quantity Sold' : 'Revenue (PKR)',
+            data: dataValues.length > 0 ? dataValues : [0],
+            backgroundColor: '#10b981',
+            borderColor: '#047857',
+            borderWidth: 2
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const logsTbody = document.getElementById('detailed-order-history-tbody');
+      logsTbody.innerHTML = filteredSales.length === 0 ? `<tr><td colspan="6" class="text-center py-4 text-slate-400">No orders recorded.</td></tr>` : filteredSales.map(s => `
+        <tr class="border-b">
+          <td class="p-2.5">${s.fullFormattedDate || s.time}</td>
+          <td class="p-2.5 font-bold">#${s.id}</td>
+          <td class="p-2.5 text-emerald-700 font-bold">${s.table}</td>
+          <td class="p-2.5">${s.serviceArea}</td>
+          <td class="p-2.5">${Array.isArray(s.items) ? s.items.name + ' (x' + i.qty + ')' : ''}</td>
+          <td class="p-2.5 font-black text-emerald-600">Rs. ${s.total}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Modal Helpers
+    function openRestaurantEditModal() {
+      document.getElementById('edit-rest-name').value = restaurantProfile.name;
+      document.getElementById('edit-branch-name').value = restaurantProfile.branch;
+      document.getElementById('restaurant-edit-modal').classList.remove('hidden');
+    }
+    function closeRestaurantEditModal() { document.getElementById('restaurant-edit-modal').classList.add('hidden'); }
+    function saveRestaurantDetails() {
+      restaurantProfile.name = document.getElementById('edit-rest-name').value;
+      restaurantProfile.branch = document.getElementById('edit-branch-name').value;
+      localStorage.setItem('yellowchillies_restaurant_profile', JSON.stringify(restaurantProfile));
+      document.getElementById('display-header-restaurant-name').innerText = restaurantProfile.name;
+      document.getElementById('display-header-branch-name').innerText = restaurantProfile.branch;
+      closeRestaurantEditModal();
+      showToast("Updated", "Profile saved.");
+    }
+
+    function openMenuEditModal() {
+      document.getElementById('menu-edit-modal').classList.remove('hidden');
+      document.getElementById('menu-edit-list-container').innerHTML = menuCatalog.map(m => `
+        <div class="flex items-center justify-between p-2.5 bg-slate-50 border rounded-xl text-xs gap-2">
+          <span class="font-bold truncate w-32">${m.name}</span>
+          <input type="number" id="edit-price-${m.id}" value="${m.price}" class="w-20 bg-white border p-1 rounded font-bold" placeholder="Price">
+          <input type="number" id="edit-stock-${m.id}" value="${m.stock ?? 100}" class="w-16 bg-white border p-1 rounded font-bold" placeholder="Stock">
+          <button onclick="updateSingleMenuItem(${m.id})" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold">Save</button>
+        </div>
+      `).join('');
+    }
+    function closeMenuEditModal() { document.getElementById('menu-edit-modal').classList.add('hidden'); }
+    function updateSingleMenuItem(id) {
+      const p = parseFloat(document.getElementById(`edit-price-${id}`).value);
+      const s = parseInt(document.getElementById(`edit-stock-${id}`).value);
+      const item = menuCatalog.find(m => m.id === id);
+      if(item) {
+        if(!isNaN(p)) item.price = p;
+        if(!isNaN(s)) item.stock = s;
+        localStorage.setItem('yellowchillies_menu_catalog', JSON.stringify(menuCatalog));
+        showToast("Success", "Menu updated.");
+        renderMenu();
+      }
+    }
+
+    function promptAdminAuth() { document.getElementById('admin-pass-input').value = ''; document.getElementById('admin-auth-modal').classList.remove('hidden'); }
+    function closeAdminAuthModal() { document.getElementById('admin-auth-modal').classList.add('hidden'); }
+    function verifyAdminPassword() {
+      if(document.getElementById('admin-pass-input').value === 'admin123') {
+        closeAdminAuthModal();
+        document.getElementById('stock-crud-modal').classList.remove('hidden');
+        renderStockList();
+      } else { alert("Incorrect Password!"); }
+    }
+    function closeStockModal() { document.getElementById('stock-crud-modal').classList.add('hidden'); }
+    function renderStockList() {
+      document.getElementById('stock-list-container').innerHTML = stockCatalog.map(s => `
+        <div class="flex justify-between items-center p-2 bg-slate-50 border rounded-xl text-xs">
+          <span><b>${s.name}</b>: ${s.qty} ${s.unit}</span>
+          <button onclick="stockCatalog=stockCatalog.filter(x=>x.id!==${s.id}); localStorage.setItem('pakrms_stock_db', JSON.stringify(stockCatalog)); renderStockList();" class="text-rose-500 font-bold">Delete</button>
+        </div>
+      `).join('');
+    }
+    function saveStockItem() {
+      const name = document.getElementById('stock-item-name').value.trim();
+      const qty = parseFloat(document.getElementById('stock-item-qty').value);
+      const unit = document.getElementById('stock-item-unit').value.trim() || 'kg';
+      if(!name || isNaN(qty)) return;
+      stockCatalog.push({ id: Date.now(), name, qty, unit });
+      localStorage.setItem('pakrms_stock_db', JSON.stringify(stockCatalog));
+      renderStockList();
+      showToast("Saved", "Stock updated.");
+    }
+
+    function openTableCrudModal() { document.getElementById('table-crud-modal').classList.remove('hidden'); renderTableList(); }
+    function closeTableCrudModal() { document.getElementById('table-crud-modal').classList.add('hidden'); }
+    function renderTableList() {
+      document.getElementById('tables-list-container').innerHTML = serviceAreas.map(t => `
+        <div class="flex justify-between items-center p-2 bg-slate-50 border rounded-xl text-xs">
+          <span>${t.name}</span>
+          <button onclick="serviceAreas=serviceAreas.filter(x=>x.id!==${t.id}); localStorage.setItem('pakrms_service_areas_db', JSON.stringify(serviceAreas)); renderTableList();" class="text-rose-500 font-bold">Delete</button>
+        </div>
+      `).join('');
+    }
+    function addNewTableOrSpot() {
+      const name = document.getElementById('new-spot-name').value.trim();
+      if(!name) return;
+      serviceAreas.push({ id: Date.now(), name });
+      localStorage.setItem('pakrms_service_areas_db', JSON.stringify(serviceAreas));
+      document.getElementById('new-spot-name').value = '';
+      renderTableList();
+    }
+
+    function openQRCodeManager() { alert("Scan QR Code to view digital menu!"); }
+
+    function exportSystemDataBackup() {
+      const data = { profile: restaurantProfile, menu: menuCatalog, areas: serviceAreas, stock: stockCatalog };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'text/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'RMS_Backup.json'; a.click();
+    }
+    function importSystemDataRestore(e) {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if(data.profile) localStorage.setItem('yellowchillies_restaurant_profile', JSON.stringify(data.profile));
+          if(data.menu) localStorage.setItem('yellowchillies_menu_catalog', JSON.stringify(data.menu));
+          if(data.areas) localStorage.setItem('pakrms_service_areas_db', JSON.stringify(data.areas));
+          if(data.stock) localStorage.setItem('pakrms_stock_db', JSON.stringify(data.stock));
+          alert("Restored successfully!"); window.location.reload();
+        } catch(err) { alert("Invalid file!"); }
+      };
+      reader.readAsText(file);
+    }
+
+    localStorage.removeItem('pakrms_completed_sales_GULBERG');
+    renderMenu();
+    renderIncomingQueue();
+    renderKDS();
+    fetchOrdersFromSheet();
+  </script>
+</body>
+</html>
